@@ -1,0 +1,133 @@
+=============================================================================
+BUG REPORT - Student Record Management System
+Author: Pedro Gonzalez San Martin
+Date: 10-17-2026
+Assignment: Programming Assignment - Student Record Management System
+File Debugged: student_records.py -> student_records_fixed.py
+=============================================================================
+
+Bug #: 1
+Type: Crash
+Line(s): 67-71
+Original: csv_file = open(csv_filename, newline="")
+          csv_reader = csv.DictReader(csv_file)
+          csv_file.close()
+          for row in csv_reader:
+Fixed: with open(csv_filename, newline="") as csv_file:
+           csv_reader = csv.DictReader(csv_file)
+           for row in csv_reader:
+Symptom: The program crashes immediately with ValueError: I/O operation on closed file when it tries to iterate over csv_reader.
+Explanation: The file was closed before csv.DictReader read any rows, so the reader had no open stream to pull data from. Using a context manager keeps the file open for the duration of the loop and closes it automatically afterwards.
+
+-----------------------------------------------------------------------------
+
+Bug #: 2
+Type: Crash
+Line(s): 149
+Original: print(f"  Student ID    : {found_student['Student_ID']}")
+Fixed: print(f"  Student ID    : {found_student['StudentID']}")
+Symptom: The program crashes with KeyError: 'Student_ID' whenever a valid student is found and displayed.
+Explanation: The dictionary is built with the key "StudentID", but the display line looked up "Student_ID" with an underscore that does not exist. Using the correct key name resolves the lookup.
+
+-----------------------------------------------------------------------------
+
+Bug #: 3
+Type: Logic
+Line(s): 67, 86
+Original: csv_file = open(csv_filename, newline="")
+          ...
+          student_records.append(student_record)
+Fixed: student_records = []
+        ...
+        student_records.append(student_record)
+Symptom: Reloading the CSV with Option 1 causes records to accumulate; loading twice reports and lists 20 records instead of 10.
+Explanation: The list was never cleared before appending the freshly parsed rows, so new records stacked on top of the old ones. Resetting student_records to an empty list before parsing fixes the duplication.
+
+-----------------------------------------------------------------------------
+
+Bug #: 4
+Type: Logic
+Line(s): 89
+Original: print(f"Success! {len(student_records)} student record(s) loaded from '{csv_filename}'.")
+Fixed: csv_loaded = True
+Symptom: Options 2 and 3 always display "No data loaded. Please use Option 1 to read a CSV file first." even after a successful load.
+Explanation: The csv_loaded flag was initialized to False and never set to True, so the program never recognized that data had been read. Setting csv_loaded = True after a successful load enables the other options.
+
+-----------------------------------------------------------------------------
+
+Bug #: 5
+Type: Logic
+Line(s): 108-116
+Original: for current_student in student_records:
+              print(
+                  f"{row_number:<5}"
+                  ...
+              )
+Fixed: for current_student in student_records:
+           print(
+               f"{row_number:<5}"
+               ...
+           )
+           row_number += 1
+Symptom: Every row printed by Option 2 shows the number 1 instead of 1, 2, 3, ... 10.
+Explanation: row_number was initialized to 1 but never incremented inside the loop, so the same value was printed on each line. Incrementing row_number at the end of each iteration produces the correct sequence.
+
+-----------------------------------------------------------------------------
+
+Bug #: 6
+Type: Logic
+Line(s): 130-133
+Original: search_id = input("Enter the Student ID to search for: ").strip()
+
+          search_index = 0
+Fixed: search_id = input("Enter the Student ID to search for: ").strip().upper()
+
+        found_student = None
+
+        search_index = 0
+Symptom: After a successful search, a follow-up search for a non-existent ID still displays the previously found student.
+Explanation: found_student retained its value from the earlier search because it was never reset. Setting found_student = None before starting a new search ensures a stale match is not reused.
+
+-----------------------------------------------------------------------------
+
+Bug #: 7
+Type: Logic
+Line(s): 135
+Original: while search_index <= len(student_records):
+Fixed: while search_index < len(student_records):
+Symptom: Searching for an ID that does not exist crashes with IndexError: list index out of range.
+Explanation: When every record failed to match, search_index reached len(student_records), and the loop condition still allowed one more pass, indexing one element past the end of the list. Using '<' stops the loop at the last valid index.
+
+-----------------------------------------------------------------------------
+
+Bug #: 8
+Type: Logic
+Line(s): 159
+Original: elif menu_choice == 4:
+Fixed: elif menu_choice == "4":
+Symptom: Choosing Option 4 never exits; instead the program prints that the choice is invalid and shows the menu again.
+Explanation: input() returns a string, so menu_choice is "4" and the comparison to the integer 4 is always False. Comparing against the string "4" makes the exit branch reachable.
+
+-----------------------------------------------------------------------------
+
+Bug #: 9
+Type: Subtle Logic
+Line(s): 131, 136
+Original: search_id = input("Enter the Student ID to search for: ").strip()
+          ...
+          if student_records[search_index]["StudentID"].upper() == search_id:
+Fixed: search_id = input("Enter the Student ID to search for: ").strip().upper()
+        ...
+        if student_records[search_index]["StudentID"].upper() == search_id:
+Symptom: Typing a lowercase ID such as s1005 fails to match, reporting that no student was found.
+Explanation: The stored ID is uppercased before comparison but the user input was not, so "s1005" never equaled "S1005". Normalizing the input with strip().upper() makes the search case-insensitive.
+
+-----------------------------------------------------------------------------
+
+Bug #: 10
+Type: Subtle Logic
+Line(s): 138
+Original: search_index = len(student_records) - 1      # Force loop to end
+Fixed: break
+Symptom: Searching for the last record in the list (S1010 at index 9) hangs the program in an infinite loop.
+Explanation: Setting search_index to len(student_records) - 1 is meant to end the loop, but when the match already is the last record the index stays at 9 and the condition remains true forever. Using break exits the loop immediately in every case.
